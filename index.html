@@ -130,6 +130,7 @@ ul{margin:6px 0;padding-left:20px;line-height:1.7}
 <div><h1>Upskilling OMR Analysis 2026</h1><div class="sub">Plumbing pre-test vs post-test dashboard</div></div></div>
 <div class="hb"><button onclick="ppt()">⬇ Download PPT</button><button onclick="admin()">🔒 Admin: Refresh data</button></div></header>
 <div id="adm"><b>Admin panel</b> – choose a new CSV file: <input type="file" id="csvf" accept=".csv"> <button onclick="sheet()">Load from Google Sheet</button> <button onclick="resetData()">Restore original data</button> Logo: <input type="file" id="logof" accept="image/*"> <span id="st"></span></div>
+<div id="src" style="font-size:12px;color:#6b6480;padding:6px 16px"></div>
 <main>
 <div class="filters"><label>Month<select id="fm"></select></label><label>State<select id="fs"></select></label><label>District<select id="fd"></select></label><label>Test type<select id="ft"><option value="">All</option><option>Pre</option><option>Post</option></select></label><label>Experience<select id="fe"></select></label><button onclick="resetF()">Reset filters</button></div>
 <div class="kpis" id="kpis"></div>
@@ -4083,11 +4084,11 @@ chart('c8','bar',eg.map(o=>o.k),[['Pre score %',eg.map(o=>av(o,'Pre'))],['Post s
 $('ins').innerHTML=S.ins.map(t=>'<li>'+t+'</li>').join('')}
 /* Admin */
 function admin(){if($('adm').style.display=='flex'){$('adm').style.display='none';return}const p=prompt('Enter admin PIN:');if(p===ADMIN_PIN)$('adm').style.display='flex';else if(p!==null)alert('Wrong PIN')}
-$('csvf').onchange=e=>{const f=e.target.files[0];if(!f)return;f.text().then(t=>{load(t);try{localStorage.setItem('omr_csv',t)}catch(x){}$('st').textContent='Data refreshed: '+ALL.length+' rows';init()})};
+$('csvf').onchange=e=>{const f=e.target.files[0];if(!f)return;f.text().then(t=>{load(t);$('st').textContent='Preview only on this device ('+ALL.length+' rows). To update for everyone, edit the Google Sheet.';init();srcNote('Data source: local CSV preview (only you can see this)')})};
 $('logof').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$('logo').innerHTML='<img src="'+r.result+'">';try{localStorage.setItem('omr_logo',r.result)}catch(x){}};r.readAsDataURL(f)};
 const SHEET='https://docs.google.com/spreadsheets/d/18I1QSAUAYUrim3XJReivF4EDlPpH84i4f_H2ih1l7XI/export?format=csv&gid=1997277945';
-async function sheet(){$('st').textContent='Loading...';try{const r=await fetch(SHEET);if(!r.ok)throw 0;const t=await r.text();load(t);try{localStorage.setItem('omr_csv',t)}catch(x){}$('st').textContent='Data refreshed from Google Sheet: '+ALL.length+' rows';init()}catch(e){$('st').textContent='Could not reach the Google Sheet. Download it as CSV and use the file picker.'}}
-function resetData(){try{localStorage.removeItem('omr_csv')}catch(x){}load($('csv').textContent);$('st').textContent='Original data restored';init()}
+async function sheet(){$('st').textContent='Loading...';try{const r=await fetch(SHEET);if(!r.ok)throw 0;const t=await r.text();load(t);$('st').textContent='Data refreshed from Google Sheet: '+ALL.length+' rows';init();srcNote('Data source: Google Sheet (live) - '+ALL.length+' rows')}catch(e){$('st').textContent='Could not reach the Google Sheet. Download it as CSV and use the file picker.'}}
+function resetData(){load($('csv').textContent);$('st').textContent='Built-in backup data restored';init();srcNote('Data source: built-in backup data')}
 /* PPT */
 async function ppt(){if(typeof PptxGenJS==='undefined'){alert('PowerPoint library could not load. Please check your internet connection and reload the page.');return}try{await buildPPT()}catch(e){console.error(e);alert('PPT error: '+e.message)}}
 async function buildPPT(){const P=new PptxGenJS();P.layout='LAYOUT_WIDE';const C=['F7941D','00A19A','7B3FA0','E91E63','2F80ED'];
@@ -4110,7 +4111,10 @@ sm(s,'This table shows each state month by month. Compare the pre and post score
 s=sl('Extra findings','F7941D');s.addText(S.ins.map(t=>({text:t,options:{bullet:true,breakLine:true}})),{x:0.6,y:1.2,w:12.1,h:5.6,fontSize:17,color:'2B2540',valign:'top',paraSpaceAfter:10});
 P.writeFile({fileName:'Upskilling_OMR_Dashboard.pptx'})}
 /* start */
-let saved=null,lg=null;try{saved=localStorage.getItem('omr_csv');lg=localStorage.getItem('omr_logo')}catch(x){}
+let lg=null;try{lg=localStorage.getItem('omr_logo');localStorage.removeItem('omr_csv')}catch(x){}
 if(lg)$('logo').innerHTML='<img src="'+lg+'">';
-load(saved||$('csv').textContent);init();
+const srcNote=m=>{const e=$('src');if(e)e.textContent=m};
+load($('csv').textContent);init();srcNote('Data source: built-in backup data (checking Google Sheet for latest...)');
+async function liveLoad(){try{const r=await fetch(SHEET+'&_='+Date.now(),{cache:'no-store'});if(!r.ok)throw 0;const t=await r.text();if(t.length<200||t.indexOf('Test Type')<0)throw 0;load(t);init();srcNote('Data source: Google Sheet (live) - '+ALL.length+' rows - loaded '+new Date().toLocaleString());return true}catch(e){srcNote('Data source: built-in backup data (Google Sheet could not be reached)');return false}}
+liveLoad();
 </script></body></html>
